@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ToDo (минимальное задание)</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+<div class="container py-5">
+    <div class="row">
+        <div class="col-md-8 mx-auto">
+            <div class="d-flex align-items-center justify-content-between mb-3">
+                <h1 class="h4 mb-0">Список задач</h1>
+                <div id="auth-bar" class="d-none">
+                    <span class="me-2 small text-muted" id="current-user"></span>
+                    <button class="btn btn-sm btn-outline-secondary" id="logout-btn">Выйти</button>
+                </div>
+            </div>
+
+            <div id="auth-card" class="card mb-4">
+                <div class="card-body">
+                    <ul class="nav nav-tabs" id="authTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="login-tab" data-bs-toggle="tab" data-bs-target="#login" type="button" role="tab">Вход</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="register-tab" data-bs-toggle="tab" data-bs-target="#register" type="button" role="tab">Регистрация</button>
+                        </li>
+                    </ul>
+                    <div class="tab-content pt-3">
+                        <div class="tab-pane fade show active" id="login" role="tabpanel">
+                            <form id="login-form" class="row g-2">
+                                <div class="col-12 col-md-5">
+                                    <input type="email" class="form-control" id="login-email" placeholder="Email" required>
+                                </div>
+                                <div class="col-12 col-md-5">
+                                    <input type="password" class="form-control" id="login-password" placeholder="Пароль" required>
+                                </div>
+                                <div class="col-12 col-md-2 d-grid">
+                                    <button class="btn btn-primary" type="submit">Войти</button>
+                                </div>
+                            </form>
+                        </div>
+                        <div class="tab-pane fade" id="register" role="tabpanel">
+                            <form id="register-form" class="row g-2">
+                                <div class="col-12 col-md-5">
+                                    <input type="email" class="form-control" id="reg-email" placeholder="Email" required>
+                                </div>
+                                <div class="col-12 col-md-5">
+                                    <input type="password" class="form-control" id="reg-password" placeholder="Пароль (мин. 6)" minlength="6" required>
+                                </div>
+                                <div class="col-12 col-md-2 d-grid">
+                                    <button class="btn btn-success" type="submit">Создать</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="tasks-ui" class="d-none">
+                <div class="card mb-4">
+                    <div class="card-body">
+                        <form id="task-form" class="row g-2">
+                            <div class="col-9 col-md-10">
+                                <input id="task-title" type="text" class="form-control" placeholder="Новая задача" maxlength="255" required>
+                                <div class="invalid-feedback" id="title-error"></div>
+                            </div>
+                            <div class="col-3 col-md-2 d-grid">
+                                <button class="btn btn-primary" type="submit">Добавить</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-body" id="tasks-list">
+                        <div class="text-center text-muted py-4">
+                            <div class="spinner-border" role="status"></div>
+                            <div class="mt-2">Загрузка…</div>
+                        </div>
+                    </div>
+                    <div class="card-footer d-flex align-items-center justify-content-between" id="pager" style="display:none">
+                        <div class="text-muted small">
+                            <span id="pager-info"></span>
+                        </div>
+                        <div class="btn-group">
+                            <button class="btn btn-sm btn-outline-secondary" id="btn-prev">« Пред</button>
+                            <button class="btn btn-sm btn-outline-secondary" id="btn-next">След »</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+const API_BASE = '';
+const API_TASKS = API_BASE + '/tasks';
+const API_LOGIN = API_BASE + '/auth/login';
+const API_REGISTER = API_BASE + '/auth/register';
+const API_ME = API_BASE + '/me';
+
+let state = { token: localStorage.getItem('token') || '', user: null, tasks: [], page:1, perPage:10, totalPages:1, total:0 };
+
+function setToken(token){
+  state.token = token || '';
+  if (state.token) localStorage.setItem('token', state.token); else localStorage.removeItem('token');
+}
+
+function authHeaders(){
+  return state.token ? { 'Authorization': 'Bearer ' + state.token } : {};
+}
+
+function toast(msg, type='danger'){
+  const el = document.createElement('div');
+  el.className = `alert alert-${type} position-fixed top-0 end-0 m-3`;
+  el.style.zIndex = '9999';
+  el.textContent = msg;
+  document.body.appendChild(el);
+  setTimeout(()=>el.remove(), 2500);
+}
+
+function setView(){
+  const authed = !!state.token && !!state.user;
+  document.getElementById('auth-card').classList.toggle('d-none', authed);
+  document.getElementById('tasks-ui').classList.toggle('d-none', !authed);
+  document.getElementById('auth-bar').classList.toggle('d-none', !authed);
+  if (authed) document.getElementById('current-user').textContent = state.user?.email || '';
+}
+
+async function fetchMe(){
+  if (!state.token) { state.user = null; return; }
+  const r = await fetch(API_ME, { headers: { ...authHeaders() }});
+  if (r.status === 401) { setToken(''); state.user = null; return; }
+  if (!r.ok) throw new Error('HTTP '+r.status);
+  state.user = await r.json();
+}
+
+async function loadTasks(page){
+  if (typeof page === 'number') state.page = page;
+  const r = await fetch(`${API_TASKS}?page=${state.page}&per_page=${state.perPage}`, { headers: { ...authHeaders() }});
+  if (r.status === 401) { setToken(''); await init(); return; }
+  if (!r.ok) throw new Error('HTTP '+r.status);
+  const data = await r.json();
+  state.tasks = Array.isArray(data) ? data : (data.items || []);
+  state.page = data.page || 1;
+  state.perPage = data.per_page || state.perPage;
+  state.total = data.total ?? state.tasks.length;
+  state.totalPages = data.total_pages || 1;
+  renderTasks();
+  renderPager();
+}
+
+function renderPager(){
+  const pager = document.getElementById('pager');
+  if (state.totalPages <= 1) { pager.style.display='none'; return; }
+  pager.style.display='flex';
+  document.getElementById('pager-info').textContent = `Стр. ${state.page} из ${state.totalPages} • Всего: ${state.total}`;
+  const prev = document.getElementById('btn-prev');
+  const next = document.getElementById('btn-next');
+  prev.disabled = state.page <= 1;
+  next.disabled = state.page >= state.totalPages;
+  prev.onclick = ()=> changePage(-1);
+  next.onclick = ()=> changePage(1);
+}
+
+function changePage(delta){
+  const target = Math.min(Math.max(1, state.page + delta), state.totalPages);
+  if (target !== state.page) loadTasks(target);
+}
+
+function renderTasks(){
+  const box = document.getElementById('tasks-list');
+  const tasks = state.tasks;
+  if(!Array.isArray(tasks) || tasks.length===0){
+    box.innerHTML = '<div class="text-muted py-4 text-center">Задач пока нет</div>';
+    return;
+  }
+  box.innerHTML = tasks.map(t=>`
+    <div class="d-flex align-items-center justify-content-between border-bottom py-2">
+      <div class="d-flex align-items-center flex-grow-1">
+        <input type="checkbox" class="form-check-input me-2" ${t.completed?'checked':''} onchange="toggle(${t.id}, this.checked)">
+        <span class="flex-grow-1" ${t.completed?'style=\"text-decoration:line-through;opacity:.7\"':''}>${escapeHtml(t.title)}</span>
+        <span class="badge ms-2 ${t.completed?'bg-success':'bg-secondary'}">${t.completed?'Готово':'Активна'}</span>
+      </div>
+      <div class="ms-3 d-flex gap-2">
+        <button class="btn btn-sm btn-outline-secondary" onclick="editTask(${t.id}, '${escapeAttr(t.title)}')">Изменить</button>
+        <button class="btn btn-sm btn-outline-danger" onclick="delTask(${t.id})">Удалить</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function escapeHtml(s){ const d=document.createElement('div'); d.textContent=s; return d.innerHTML; }
+function escapeAttr(s){ return String(s).replaceAll('\\', '\\\\').replaceAll('"', '\\"').replaceAll("'", "\\'"); }
+
+document.getElementById('task-form').addEventListener('submit', async (e)=>{
+  e.preventDefault();
+  const input = document.getElementById('task-title');
+  const title = input.value.trim();
+  const error = document.getElementById('title-error');
+  input.classList.remove('is-invalid');
+  if(!title){ error.textContent='Введите название'; input.classList.add('is-invalid'); return; }
+  try{
+    const r = await fetch(API_TASKS, {method:'POST', headers:{'Content-Type':'application/json', ...authHeaders()}, body: JSON.stringify({title})});
+    if(r.status === 401){ setToken(''); await init(); return; }
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    input.value='';
+    await loadTasks();
+  }catch(e){ toast('Не удалось добавить'); }
+});
+
+async function toggle(id, completed){
+  try{
+    const r = await fetch(`${API_TASKS}/${id}`, {method:'PATCH', headers:{'Content-Type':'application/json', ...authHeaders()}, body: JSON.stringify({completed})});
+    if(r.status === 401){ setToken(''); await init(); return; }
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    await loadTasks();
+  }catch(e){ toast('Не удалось обновить'); }
+}
+
+async function editTask(id, currentTitle){
+  const next = prompt('Новое название задачи', currentTitle || '');
+  if (next === null) return;
+  const title = next.trim();
+  if (!title) { toast('Название не может быть пустым'); return; }
+  try{
+    const r = await fetch(`${API_TASKS}/${id}`, {method:'PATCH', headers:{'Content-Type':'application/json', ...authHeaders()}, body: JSON.stringify({title})});
+    if(r.status === 401){ setToken(''); await init(); return; }
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    await loadTasks();
+  }catch(e){ toast('Не удалось изменить'); }
+}
+
+async function delTask(id){
+  if(!confirm('Удалить задачу?')) return;
+  try{
+    const r = await fetch(`${API_TASKS}/${id}`, {method:'DELETE', headers:{...authHeaders()}});
+    if(r.status === 401){ setToken(''); await init(); return; }
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    await loadTasks();
+  }catch(e){ toast('Не удалось удалить'); }
+}
+
+// Auth
+
+document.getElementById('login-form').addEventListener('submit', async (e)=>{
+  e.preventDefault();
+  const email = document.getElementById('login-email').value.trim();
+  const password = document.getElementById('login-password').value;
+  try{
+    const r = await fetch(API_LOGIN, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({email, password}) });
+    const data = await r.json();
+    if (!r.ok) throw new Error(data?.error || ('HTTP '+r.status));
+    setToken(data.token);
+    await init();
+  }catch(err){ toast('Ошибка входа: '+err.message); }
+});
+
+document.getElementById('register-form').addEventListener('submit', async (e)=>{
+  e.preventDefault();
+  const email = document.getElementById('reg-email').value.trim();
+  const password = document.getElementById('reg-password').value;
+  try{
+    const r = await fetch(API_REGISTER, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({email, password}) });
+    const data = await r.json();
+    if (!r.ok) throw new Error(data?.error || ('HTTP '+r.status));
+    setToken(data.token);
+    await init();
+  }catch(err){ toast('Ошибка регистрации: '+err.message); }
+});
+
+// Logout
+
+document.getElementById('logout-btn').addEventListener('click', async ()=>{
+  setToken('');
+  state.user = null;
+  setView();
+});
+
+async function init(){
+  try{ await fetchMe(); }catch(e){}
+  setView();
+  if (state.user) { await loadTasks(1); }
+}
+
+init();
+</script>
+</body>
+</html>

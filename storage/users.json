@@ -1,0 +1,44 @@
+[
+    {
+        "id": 1,
+        "email": "dfdsffds@ddsfdsf.ru",
+        "password_hash": "$2y$12$zFq9pNW1sDtETz53zval2.cwNuMcCzLfFe16UzrrpCDVQKmGeE\/fy",
+        "created_at": "2025-10-01T14:20:22+00:00"
+    },
+    {
+        "id": 2,
+        "email": "demo@example.com",
+        "password_hash": "$2y$12$Pxz1CWBoSC2VbaMToDOk.e2W5fI1t9G34Hu1OT.R9PlncE\/8j7AkK",
+        "created_at": "2025-10-01T14:22:01+00:00"
+    },
+    {
+        "id": 3,
+        "email": "dfsdfds@fdfdsfs.ru",
+        "password_hash": "$2y$12$D8TSh9k9jAbailURyinVTuMTdAH1\/G.qDutZ1lAyjhHDni7M0\/3na",
+        "created_at": "2025-10-01T15:02:17+00:00"
+    },
+    {
+        "id": 4,
+        "email": "newuser@test.com",
+        "password_hash": "$2y$12$.4LgRAtzpiJiohFR5TjWUujKsHs85bKdYpLF0KJxV6ZA7d8szl.Iu",
+        "created_at": "2025-10-01T16:45:51+00:00"
+    },
+    {
+        "id": 5,
+        "email": "test@example.com",
+        "password_hash": "$2y$12$jOL.93zIenkWVnc10m7jgeobxd9dV3uXb4vFbQo\/cUbgC1gQcjIEG",
+        "created_at": "2025-10-01T16:46:01+00:00"
+    },
+    {
+        "id": 6,
+        "email": "test@test.com",
+        "password_hash": "$2y$12$bVJJPRiEvih1pVZiA9keWOOPeRM49WJP5FYarZ\/88B5PMVHN4dsjy",
+        "created_at": "2025-10-01T16:46:56+00:00"
+    },
+    {
+        "id": 7,
+        "email": "44444@44444.ty",
+        "password_hash": "$2y$12$2Ml70SYdBF2rfQgHydq4jOf6fQvdCz7XnbK8r7kH0PYcCJl6oCj7i",
+        "created_at": "2025-10-01T16:53:45+00:00"
+    }
+]
